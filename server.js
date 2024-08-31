@@ -27,9 +27,13 @@ app.post('/ajouter-client', (req, res) => {
     const nomClient = req.body.nom;
     connection.query('INSERT INTO clients (nom) VALUES (?)', [nomClient], (err, result) => {
         if (err) throw err;
-        res.redirect('/liste.html');
+        const clientId = result.insertId;
+        console.log({ id: clientId, nom: nomClient }); // Vérifiez les données ici
+        res.json({ id: clientId, nom: nomClient });
     });
 });
+
+
 
 app.get('/liste-clients', (req, res) => {
     connection.query('SELECT * FROM clients', (err, results) => {

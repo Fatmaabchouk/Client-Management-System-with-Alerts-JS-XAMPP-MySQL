@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page d'accueil</title>
+    <title>Keystone Group - Accueil et Liste des Clients</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
@@ -12,8 +12,19 @@
             margin: 0;
             padding: 20px;
         }
-        h1 {
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        header img {
+            width: 100px; /* Ajustez selon vos besoins */
+            height: auto;
+        }
+        h1, h2 {
             color: #333;
+            text-align: center;
         }
         .container {
             max-width: 600px;
@@ -22,6 +33,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 40px; /* Espace entre les sections */
         }
         form {
             display: flex;
@@ -62,16 +74,163 @@
         .links a:hover {
             text-decoration: underline;
         }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .alerte-envoyee {
+            background-color: green;
+            color: white;
+        }
+        #annulerAlerte {
+            background-color: #ff4c4c;
+            margin: 20px auto;
+            display: block;
+        }
+        #annulerAlerte:hover {
+            background-color: #e03e3e;
+        }
     </style>
 </head>
 <body>
-    <h1>Keystone Group </h1>
-    <h2>Bienvenue sur la page d'accueil</h2>
-    <form action="/ajouter-client" method="POST">
-        <label for="nom">Nom du client:</label>
-        <input type="text" id="nom" name="nom" required>
-        <button type="submit">Ajouter le Client</button>
-        <a href="liste.html">Consulter Alerte</a>
-    </form>
+    <header>
+        <img src="/public/image/image1.jpg" alt="Image gauche"> <!-- Remplacez par le chemin réel de votre image -->
+        <h1>Keystone Group</h1>
+        <img src="/public/image/image2.jpg" alt="Image droite"> <!-- Remplacez par le chemin réel de votre image -->
+    </header>
+
+    <section class="container">
+        <h2>Bienvenue sur la page d'accueil</h2>
+        <form id="clientForm">
+            <label for="nom">Nom du client :</label>
+            <input type="text" id="nom" name="nom" required>
+            <button type="submit">Ajouter le Client</button>
+            <div class="links">
+                <a href="#listeClients">Consulter Alerte</a>
+            </div>
+        </form>
+    </section>
+
+    <section id="listeClients" class="container">
+        <h2>Liste des Clients</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nom du Client</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="clientTable">
+                <!-- Les clients seront insérés ici dynamiquement -->
+            </tbody>
+        </table>
+        <button id="annulerAlerte">Annuler l'Alerte</button>
+    </section>
+
+    <script>
+        document.querySelector('#clientForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Empêcher la soumission classique du formulaire
+            
+            const nomClient = document.getElementById('nom').value;
+            
+            fetch('/ajouter-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `nom=${encodeURIComponent(nomClient)}`
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('La réponse du réseau n\'était pas ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Ajouter le nouveau client à la liste sans recharger la page
+                const clientTable = document.getElementById('clientTable');
+                const row = document.createElement('tr');
+                row.id = `client-${data.id}`; // Ajouter un ID unique à chaque ligne
+                row.innerHTML = `
+                    <td>${data.nom}</td>
+                    <td>
+                        <button onclick="supprimerClient(${data.id})">Supprimer</button>
+                        <button onclick="envoyerAlerte(${data.id}, this)">Alerte Envoyée</button>
+                    </td>
+                `;
+                clientTable.appendChild(row);
+            
+                // Réinitialiser le champ de saisie
+                document.getElementById('nom').value = '';
+            
+                // Rediriger vers la section des clients
+                document.getElementById('listeClients').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            })
+            .catch(error => console.error('Erreur:', error));
+        });
+        
+        async function fetchClients() {
+            const response = await fetch('/liste-clients');
+            const clients = await response.json();
+            const clientTable = document.getElementById('clientTable');
+            clientTable.innerHTML = '';
+            clients.forEach(client => {
+                const row = document.createElement('tr');
+                if (client.alerte_envoyee) row.classList.add('alerte-envoyee');
+                row.id = `client-${client.id}`; // Ajouter un ID unique à chaque ligne
+    
+                row.innerHTML = `
+                    <td>${client.nom}</td>
+                    <td>
+                        <button onclick="supprimerClient(${client.id})">Supprimer</button>
+                        <button onclick="envoyerAlerte(${client.id}, this)">Alerte Envoyée</button>
+                    </td>
+                `;
+                clientTable.appendChild(row);
+            });
+        }
+        
+        function supprimerClient(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
+                fetch('/supprimer-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${id}`
+                }).then(() => fetchClients());
+            }
+        }
+        
+        function envoyerAlerte(id, button) {
+            const row = button.closest('tr');
+            const alerteActivee = row.classList.contains('alerte-envoyee');
+        
+            fetch('/envoyer-alerte', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id=${id}&alerte_activee=${alerteActivee ? 0 : 1}`
+            }).then(() => {
+                row.classList.toggle('alerte-envoyee');
+            });
+        }
+        
+        document.getElementById('annulerAlerte').addEventListener('click', () => {
+            document.querySelectorAll('.alerte-envoyee').forEach(row => {
+                row.classList.remove('alerte-envoyee');
+            });
+        });
+        
+        fetchClients(); // Charger les clients lors du chargement de la page
+    </script>
 </body>
 </html>
